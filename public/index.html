@@ -1,0 +1,82 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8" />
+  <title>Real time editing</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    #area {
+      width: 96%;
+      height: 70vh;
+      margin: 10px auto;
+      display: block;
+      padding: 10px;
+      font-size: 16px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      resize: none;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+	<p>Real time editing</p>
+  <textarea id="area" placeholder="请输入内容..."></textarea>
+
+  <script>
+    (function(){
+      const textarea = document.getElementById('area');
+      const socket = io();
+
+      let isComposing = false;
+      let debounceTimer = null;
+      let lastSent = '';
+
+      textarea.addEventListener('compositionstart', () => {
+        isComposing = true;
+      });
+
+      textarea.addEventListener('compositionend', () => {
+        isComposing = false;
+        sendTextDebounced();
+      });
+
+      textarea.addEventListener('input', () => {
+        if (!isComposing) {
+          sendTextDebounced();
+        }
+      });
+
+      function sendTextDebounced() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const val = textarea.value;
+          if (val !== lastSent) {
+            socket.emit('writing', val);
+            lastSent = val;
+          }
+        }, 300);
+      }
+
+      socket.on('updateMessage', (data) => {
+        if(textarea.value !== data.text) {
+          textarea.value = data.text;
+          lastSent = data.text;
+        }
+      });
+
+      socket.on('updateNewUser', (data) => {
+        if(textarea.value !== data) {
+          textarea.value = data;
+          lastSent = data;
+        }
+      });
+
+      socket.on('someone connected', () => {
+        console.log('Someone just connected!');
+      });
+    })();
+  </script>
+</body>
+</html>
